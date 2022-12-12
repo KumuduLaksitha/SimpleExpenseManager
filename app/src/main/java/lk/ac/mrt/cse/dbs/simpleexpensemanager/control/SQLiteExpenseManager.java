@@ -21,7 +21,7 @@ public class SQLiteExpenseManager extends ExpenseManager{
     public SQLiteExpenseManager(Context context) {
         super();
         transactionDAO = new SQLiteTransactionDAO(context);
-        accountDAO = new SQLiteAccountDAO();
+        accountDAO = new SQLiteAccountDAO(context);
     }
 
     @Override
@@ -30,6 +30,5 @@ public class SQLiteExpenseManager extends ExpenseManager{
         setTransactionsDAO(transactionDAO);
         setAccountsDAO(accountDAO);
 
-        // need to add accounts like dummy data????
     }
 }
