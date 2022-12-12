@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.AccountDAO;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.exception.InvalidAccountException;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.Account;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.ExpenseType;
@@ -21,11 +20,25 @@ import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.Transaction;
 
 public class SQLiteDB extends SQLiteOpenHelper {
 
-    public SQLiteDB(@Nullable Context context) {
+    private static final String DATABASE_NAME = "expense_mgr";
+    private static final String ACCOUNT_TABLE = "account";
+    private static final String TRANSACTION_TABLE = "transaction_log";
 
-        super(context, "expense_mgr", null, 1);
+    private static final String COLUMN_ACCOUNT_NO = ACCOUNT_TABLE + "_no";
+    private static final String COLUMN_HOLDER_NAME = ACCOUNT_TABLE + "_holder_name";
+    private static final String COLUMN_BANK_NAME = "bank_name";
+    private static final String COLUMN_BALANCE = "balance";
+    private static final String COLUMN_DATE = "date";
+    private static final String COLUMN_TRANSACTION_TYPE = "transaction_type";
+    private static final String COLUMN_AMOUNT = "amount";
 
-    }
+    /**
+     * I implemented methods for all needed actions by DAO classes
+     * There is many code duplications in this implementation
+     * but this is faster than using for loops or any other sorting methods inside DAO classes
+     * DAO classes are clean and straightforward now
+     */
+
 
     /**
      * creates database expense_mgr in the first run
@@ -35,53 +48,53 @@ public class SQLiteDB extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
 
         // account table
-        String accountTableCreateQuery = "CREATE TABLE account " +
-                "(account_no TEXT PRIMARY KEY, " +
-                "bank_name TEXT, account_holder_name TEXT," +
-                "balance REAL);";
+        String accountTableCreateQuery = "CREATE TABLE " + ACCOUNT_TABLE + " " +
+                "(" + COLUMN_ACCOUNT_NO + " TEXT PRIMARY KEY, " +
+                COLUMN_BANK_NAME + " TEXT, " + COLUMN_HOLDER_NAME + " TEXT," +
+                COLUMN_BALANCE + " REAL);";
         sqLiteDatabase.execSQL(accountTableCreateQuery);
 
         // transaction_log table
-        String transactionTableCreateQuery = "CREATE TABLE transaction_log " +
-                "(id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, " +
-                "account_no TEXT, transaction_type INTEGER, amount REAL, " +
-                "FOREIGN KEY (account_no) REFERENCES account(account_no));";
+        String transactionTableCreateQuery = "CREATE TABLE " + TRANSACTION_TABLE + " " +
+                "(id INTEGER PRIMARY KEY AUTOINCREMENT, " + COLUMN_DATE + " TEXT, " +
+                COLUMN_ACCOUNT_NO + " TEXT, " + COLUMN_TRANSACTION_TYPE + " INTEGER, " + COLUMN_AMOUNT + " REAL, " +
+                "FOREIGN KEY (" + COLUMN_ACCOUNT_NO + ") REFERENCES " + ACCOUNT_TABLE + "(" + COLUMN_ACCOUNT_NO + "));";
         sqLiteDatabase.execSQL(transactionTableCreateQuery);
 
     }
 
     /**
+     * this is version 1.0
+     * no need of upgrade code
+     * will be needed in future versions
+     */
+    @Override
+    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int i, int i1) {}
+
+    /**
      * adds new account object to the database system
      * @param account
-     * @return boolean showing success of operation
      */
-    public boolean addAccount(Account account) {
+    public void addAccount(Account account) {
 
         SQLiteDatabase database = this.getWritableDatabase();
 
         // create content value and insert it to database
         ContentValues cv = new ContentValues();
-        cv.put("account_no", account.getAccountNo());
-        cv.put("bank_name", account.getBankName());
-        cv.put("account_holder_name", account.getAccountHolderName());
-        cv.put("balance", account.getBalance());
+        cv.put(COLUMN_ACCOUNT_NO, account.getAccountNo());
+        cv.put(COLUMN_BANK_NAME, account.getBankName());
+        cv.put(COLUMN_HOLDER_NAME, account.getAccountHolderName());
+        cv.put(COLUMN_BALANCE, account.getBalance());
 
-        long returnValue = database.insert("account", null,  cv);
-
-        // check return value for success
-        if (returnValue < 0)
-            return false;
-        else
-            return true;
+        database.insert(ACCOUNT_TABLE, null,  cv);
 
     }
 
     /**
      * add new transaction to database
      * @param transaction
-     * @return boolean showing success of the operation
      */
-    public boolean addTransactionLog(Transaction transaction) {
+    public void addTransactionLog(Transaction transaction) {
 
         SQLiteDatabase database = this.getWritableDatabase();
 
@@ -91,23 +104,17 @@ public class SQLiteDB extends SQLiteOpenHelper {
         // need to store date as a string
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
         String transactionDate = dateFormat.format(transaction.getDate());
-        cv.put("date", transactionDate);
+        cv.put(COLUMN_DATE, transactionDate);
 
-        cv.put("account_no", transaction.getAccountNo());
+        cv.put(COLUMN_ACCOUNT_NO, transaction.getAccountNo());
 
         // storing 1 (income) and 0 (expense) for Expense type in DB
         int transactionType = transaction.getExpenseType() == ExpenseType.INCOME ? 1 : 0;
-        cv.put("transaction_type", transactionType);
+        cv.put(COLUMN_TRANSACTION_TYPE, transactionType);
 
-        cv.put("amount", transaction.getAmount());
+        cv.put(COLUMN_AMOUNT, transaction.getAmount());
 
-        long returnValue = database.insert("transaction_log", null, cv);
-
-        // check return value for success
-        if (returnValue < 0)
-            return false;
-        else
-            return true;
+        database.insert(TRANSACTION_TABLE, null, cv);
 
     }
 
@@ -121,7 +128,7 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
         // reading values using sql query
         SQLiteDatabase database = this.getReadableDatabase();
-        String readQuery = "SELECT * FROM transaction_log;";
+        String readQuery = "SELECT * FROM " + TRANSACTION_TABLE + ";";
         Cursor cursor = database.rawQuery(readQuery, null);
 
         // loop through cursor and fetch records
@@ -142,8 +149,7 @@ public class SQLiteDB extends SQLiteOpenHelper {
                     ex.printStackTrace();
                 }
 
-                Transaction transaction =
-                        new Transaction(transactionDateObject, accountNo, expenseType, amount);
+                Transaction transaction = new Transaction(transactionDateObject, accountNo, expenseType, amount);
                 transactionList.add(transaction);
 
             } while (cursor.moveToNext());
@@ -155,12 +161,17 @@ public class SQLiteDB extends SQLiteOpenHelper {
         return transactionList;
     }
 
+    /**
+     * returns list of limited no of transaction logs preferred by user
+     * @param limit
+     * @return
+     */
     public List<Transaction> getPaginatedTransactionList(int limit) {
         List<Transaction> paginatedTransactionList = new ArrayList();
 
         // reading values using sql query
         SQLiteDatabase database = this.getReadableDatabase();
-        String readQuery = "SELECT * FROM transaction_log LIMIT ?;";
+        String readQuery = "SELECT * FROM " + TRANSACTION_TABLE + " LIMIT ?;";
         Cursor cursor = database.rawQuery(readQuery, new String[] {Integer.toString(limit)});
 
         // loop through cursor and fetch records
@@ -181,8 +192,7 @@ public class SQLiteDB extends SQLiteOpenHelper {
                     ex.printStackTrace();
                 }
 
-                Transaction transaction =
-                        new Transaction(transactionDateObject, accountNo, expenseType, amount);
+                Transaction transaction = new Transaction(transactionDateObject, accountNo, expenseType, amount);
                 paginatedTransactionList.add(transaction);
 
             } while (cursor.moveToNext());
@@ -204,7 +214,7 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
         // reading values using sql query
         SQLiteDatabase database = this.getReadableDatabase();
-        String readQuery = "SELECT * FROM account";
+        String readQuery = "SELECT * FROM " + ACCOUNT_TABLE;
         Cursor cursor = database.rawQuery(readQuery, null);
 
         // loop through cursor and fetch records
@@ -239,7 +249,7 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
         // reading values using sql query
         SQLiteDatabase database = this.getReadableDatabase();
-        String readQuery = "SELECT account_no FROM account";
+        String readQuery = "SELECT " + COLUMN_ACCOUNT_NO + " FROM " + ACCOUNT_TABLE;
         Cursor cursor = database.rawQuery(readQuery, null);
 
         // loop through cursor and fetch records
@@ -261,13 +271,14 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
     /**
      * gives account object for a given account number
+     * throws InvalidAccountException if account is not found
      * @param accountNo
      * @return account object
      */
     public Account getAccountByNo(String accountNo) throws InvalidAccountException{
 
         SQLiteDatabase database = this.getReadableDatabase();
-        String getBalanceQuery = "SELECT * FROM account WHERE account_no = ?;";
+        String getBalanceQuery = "SELECT * FROM " + ACCOUNT_TABLE + " WHERE " + COLUMN_ACCOUNT_NO + " = ?;";
         Cursor cursor = database.rawQuery(getBalanceQuery, new String[] {accountNo});
 
         // no need to loop
@@ -290,13 +301,13 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
     /**
      * removes the given account
+     * throws InvalidAccountException if account is not found
      * @param accountNo
-     * @return operation successful or not
      */
     public void removeAccount(String accountNo) throws InvalidAccountException{
 
         SQLiteDatabase database = this.getWritableDatabase();
-        int returnValue = database.delete("account", "account_no = ?", new String[]{accountNo});
+        int returnValue = database.delete(ACCOUNT_TABLE, COLUMN_ACCOUNT_NO + " = ?", new String[]{accountNo});
 
         // return value gives no of records deleted
         if (returnValue == 0) {
@@ -308,14 +319,14 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
     /**
      * get balance of a give account
-     * return -1 if account not found
+     * throws InvalidAccountException if account is not found
      * @param accountNo
      * @return balance
      */
     public double getBalance(String accountNo) throws InvalidAccountException{
 
         SQLiteDatabase database = this.getReadableDatabase();
-        String getBalanceQuery = "SELECT balance FROM account WHERE account_no = ?;";
+        String getBalanceQuery = "SELECT " + COLUMN_BALANCE + " FROM " + ACCOUNT_TABLE + " WHERE " + COLUMN_ACCOUNT_NO + " = ?;";
         Cursor cursor = database.rawQuery(getBalanceQuery, new String[] {accountNo});
 
         if (cursor.moveToFirst()) {
@@ -335,17 +346,15 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
         SQLiteDatabase database = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
-        cv.put("balance", balance);
-        database.update("account", cv, "account_no = ?", new String[]{accountNo});
+        cv.put(COLUMN_BALANCE, balance);
+        database.update(ACCOUNT_TABLE, cv, COLUMN_ACCOUNT_NO + " = ?", new String[]{accountNo});
 
     }
 
-    /**
-     * this is version 1.0
-     * no need of upgrade code
-     * will be needed in future versions
-     */
-    @Override
-    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int i, int i1) {}
+    public SQLiteDB(@Nullable Context context) {
+
+        super(context, DATABASE_NAME, null, 1);
+
+    }
 
 }
