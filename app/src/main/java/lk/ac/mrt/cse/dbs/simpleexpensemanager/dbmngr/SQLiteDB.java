@@ -189,6 +189,50 @@ public class SQLiteDB extends SQLiteOpenHelper {
     }
 
     /**
+     * removes the given account
+     * @param accountNo
+     */
+    public void removeAccount(String accountNo) {
+
+        SQLiteDatabase database = this.getWritableDatabase();
+        database.delete("account", "account_no = ?", new String[]{accountNo});
+
+    }
+
+    /**
+     * get balance of a give account
+     * return -1 if account not found
+     * @param accountNo
+     * @return balance
+     */
+    public double getBalance(String accountNo) {
+
+        SQLiteDatabase database = this.getReadableDatabase();
+        Cursor cursor = database.query("account", new String[] {"balance"},
+                "account_no = ?", new String[] {accountNo}, null, null, null);
+
+        if (cursor.moveToFirst()) {
+            return cursor.getDouble(0);
+        }
+
+        return -1;
+    }
+
+    /**
+     * update the balance of a account using given value
+     * @param accountNo
+     * @param balance
+     */
+    public void updateAccountBalance(String accountNo, double balance) {
+
+        SQLiteDatabase database = this.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put("balance", balance);
+        database.update("account", cv, "account_no = ?", new String[]{accountNo});
+
+    }
+
+    /**
      * this is version 1.0
      * no need of upgrade code
      * will be needed in future versions
