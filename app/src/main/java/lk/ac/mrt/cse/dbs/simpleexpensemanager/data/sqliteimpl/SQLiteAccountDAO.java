@@ -11,7 +11,7 @@ public class SQLiteAccountDAO implements AccountDAO {
 
     @Override
     public List<String> getAccountNumbersList() {
-        return null;
+
     }
 
     @Override

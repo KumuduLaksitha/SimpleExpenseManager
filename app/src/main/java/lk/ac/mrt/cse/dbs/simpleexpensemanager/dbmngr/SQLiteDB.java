@@ -34,14 +34,14 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
         // account table
         String accountTableCreateQuery = "CREATE TABLE expense_mgr.account " +
-                "(account_no TEXT PRIMARY KEY AUTOINCREMENT," +
+                "(account_no TEXT PRIMARY KEY, " +
                 "bank_name TEXT, account_holder_name TEXT," +
                 "balance REAL);";
         sqLiteDatabase.execSQL(accountTableCreateQuery);
 
         // transaction_log table
         String transactionTableCreateQuery = "CREATE TABLE expense_mgr.transaction_log " +
-                "(id INTEGER PRIMARY KEY, date TEXT, " +
+                "(id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, " +
                 "account_no TEXT, transaction_type INTEGER, amount REAL, " +
                 "FOREIGN KEY (account_no) REFERENCES account(account_no));";
         sqLiteDatabase.execSQL(transactionTableCreateQuery);
