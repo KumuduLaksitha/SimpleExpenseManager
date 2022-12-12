@@ -32,8 +32,7 @@ public class SQLiteTransactionDAO implements TransactionDAO {
     @Override
     public List<Transaction> getAllTransactionLogs() {
 
-        List<Transaction> list = helper.getTransactionList();
-        return list;
+        return helper.getTransactionList();
 
     }
 
