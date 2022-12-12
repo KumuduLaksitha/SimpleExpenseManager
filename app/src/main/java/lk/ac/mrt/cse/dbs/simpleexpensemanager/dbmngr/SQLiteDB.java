@@ -20,7 +20,7 @@ import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.Transaction;
 
 public class SQLiteDB extends SQLiteOpenHelper {
 
-    private static final String DATABASE_NAME = "expense_mgr";
+    private static final String DATABASE_NAME = "200399G";
     private static final String ACCOUNT_TABLE = "account";
     private static final String TRANSACTION_TABLE = "transaction_log";
 
