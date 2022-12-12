@@ -1,9 +1,7 @@
 package lk.ac.mrt.cse.dbs.simpleexpensemanager.data.sqliteimpl;
 
 import android.content.Context;
-import android.database.sqlite.SQLiteOpenHelper;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -12,11 +10,11 @@ import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.ExpenseType;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.Transaction;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.dbmngr.SQLiteDB;
 
-public class SQLiteTransactionDAO implements TransactionDAO {
+public class PersistentTransactionDAO implements TransactionDAO {
 
     private SQLiteDB helper;
 
-    public SQLiteTransactionDAO (Context context) {
+    public PersistentTransactionDAO(Context context) {
 
         helper = new SQLiteDB(context);
 
@@ -39,13 +37,7 @@ public class SQLiteTransactionDAO implements TransactionDAO {
     @Override
     public List<Transaction> getPaginatedTransactionLogs(int limit) {
 
-        List<Transaction> list = helper.getTransactionList();
-
-        // if list is smaller than limit
-        if (list.size() < limit)
-            return list;
-
-        return list.subList(list.size() - limit, list.size());
+        return helper.getPaginatedTransactionList(limit);
 
     }
 }

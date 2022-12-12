@@ -2,7 +2,6 @@ package lk.ac.mrt.cse.dbs.simpleexpensemanager.data.sqliteimpl;
 
 import android.content.Context;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.AccountDAO;
@@ -11,11 +10,11 @@ import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.Account;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.ExpenseType;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.dbmngr.SQLiteDB;
 
-public class SQLiteAccountDAO implements AccountDAO {
+public class PersistentAccountDAO implements AccountDAO {
 
     private SQLiteDB helper;
 
-    public SQLiteAccountDAO(Context context) {
+    public PersistentAccountDAO(Context context) {
 
         helper = new SQLiteDB(context);
 
@@ -24,14 +23,7 @@ public class SQLiteAccountDAO implements AccountDAO {
     @Override
     public List<String> getAccountNumbersList() {
 
-        List<String> accountNoList = new ArrayList<>();
-
-        List<Account> list = helper.getAccountList();
-        for (Account account : list) {
-            accountNoList.add(account.getAccountNo());
-        }
-
-        return accountNoList;
+        return helper.getAccountNoList();
 
     }
 
@@ -45,14 +37,7 @@ public class SQLiteAccountDAO implements AccountDAO {
     @Override
     public Account getAccount(String accountNo) throws InvalidAccountException {
 
-        List<Account> list = helper.getAccountList();
-
-        for (Account account : list) {
-            if (account.getAccountNo() == accountNo)
-                return account;
-        }
-
-        return null;
+        return helper.getAccountByNo(accountNo);
 
     }
 

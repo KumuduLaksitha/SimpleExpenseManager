@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.AccountDAO;
+import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.exception.InvalidAccountException;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.Account;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.ExpenseType;
 import lk.ac.mrt.cse.dbs.simpleexpensemanager.data.model.Transaction;
@@ -33,14 +35,14 @@ public class SQLiteDB extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
 
         // account table
-        String accountTableCreateQuery = "CREATE TABLE expense_mgr.account " +
+        String accountTableCreateQuery = "CREATE TABLE account " +
                 "(account_no TEXT PRIMARY KEY, " +
                 "bank_name TEXT, account_holder_name TEXT," +
                 "balance REAL);";
         sqLiteDatabase.execSQL(accountTableCreateQuery);
 
         // transaction_log table
-        String transactionTableCreateQuery = "CREATE TABLE expense_mgr.transaction_log " +
+        String transactionTableCreateQuery = "CREATE TABLE transaction_log " +
                 "(id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, " +
                 "account_no TEXT, transaction_type INTEGER, amount REAL, " +
                 "FOREIGN KEY (account_no) REFERENCES account(account_no));";
@@ -119,7 +121,7 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
         // reading values using sql query
         SQLiteDatabase database = this.getReadableDatabase();
-        String readQuery = "SELECT * FROM expense_mgr.transaction_log;";
+        String readQuery = "SELECT * FROM transaction_log;";
         Cursor cursor = database.rawQuery(readQuery, null);
 
         // loop through cursor and fetch records
@@ -153,6 +155,45 @@ public class SQLiteDB extends SQLiteOpenHelper {
         return transactionList;
     }
 
+    public List<Transaction> getPaginatedTransactionList(int limit) {
+        List<Transaction> paginatedTransactionList = new ArrayList();
+
+        // reading values using sql query
+        SQLiteDatabase database = this.getReadableDatabase();
+        String readQuery = "SELECT * FROM transaction_log LIMIT ?;";
+        Cursor cursor = database.rawQuery(readQuery, new String[] {Integer.toString(limit)});
+
+        // loop through cursor and fetch records
+        if (cursor.moveToFirst()) {
+            do {
+
+                String transactionDate = cursor.getString(1);
+                String accountNo = cursor.getString(2);
+                ExpenseType expenseType = cursor.getInt(3) ==
+                        1 ? ExpenseType.INCOME : ExpenseType.EXPENSE;
+                double amount = cursor.getDouble(4);
+
+                SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+                Date transactionDateObject = null;
+                try {
+                    transactionDateObject = dateFormat.parse(transactionDate);
+                } catch (ParseException ex) {
+                    ex.printStackTrace();
+                }
+
+                Transaction transaction =
+                        new Transaction(transactionDateObject, accountNo, expenseType, amount);
+                paginatedTransactionList.add(transaction);
+
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        database.close();
+
+        return paginatedTransactionList;
+    }
+
     /**
      * return list of all saved accounts
      * @return arraylist of account objects
@@ -163,7 +204,7 @@ public class SQLiteDB extends SQLiteOpenHelper {
 
         // reading values using sql query
         SQLiteDatabase database = this.getReadableDatabase();
-        String readQuery = "SELECT * FROM expense_mgr.account";
+        String readQuery = "SELECT * FROM account";
         Cursor cursor = database.rawQuery(readQuery, null);
 
         // loop through cursor and fetch records
@@ -189,13 +230,79 @@ public class SQLiteDB extends SQLiteOpenHelper {
     }
 
     /**
+     * return arraylist of account numbers saved
+     * @return
+     */
+    public List<String> getAccountNoList() {
+
+        List<String> accountList = new ArrayList<>();
+
+        // reading values using sql query
+        SQLiteDatabase database = this.getReadableDatabase();
+        String readQuery = "SELECT account_no FROM account";
+        Cursor cursor = database.rawQuery(readQuery, null);
+
+        // loop through cursor and fetch records
+        if (cursor.moveToFirst()) {
+            do {
+
+                String accountNo = cursor.getString(0);
+                accountList.add(accountNo);
+
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        database.close();
+
+        return accountList;
+
+    }
+
+    /**
+     * gives account object for a given account number
+     * @param accountNo
+     * @return account object
+     */
+    public Account getAccountByNo(String accountNo) throws InvalidAccountException{
+
+        SQLiteDatabase database = this.getReadableDatabase();
+        String getBalanceQuery = "SELECT * FROM account WHERE account_no = ?;";
+        Cursor cursor = database.rawQuery(getBalanceQuery, new String[] {accountNo});
+
+        // no need to loop
+        // choosing account by primary key
+        // no repetitions can happen
+        if (cursor.moveToFirst()) {
+            String bankName = cursor.getString(1);
+            String holderName = cursor.getString(2);
+            Double balance = cursor.getDouble(3);
+
+            Account account = new Account(accountNo, bankName, holderName, balance);
+
+            return account;
+        }
+
+        String msg = "Account " + accountNo + " is invalid.";
+        throw new InvalidAccountException(msg);
+
+    }
+
+    /**
      * removes the given account
      * @param accountNo
+     * @return operation successful or not
      */
-    public void removeAccount(String accountNo) {
+    public void removeAccount(String accountNo) throws InvalidAccountException{
 
         SQLiteDatabase database = this.getWritableDatabase();
-        database.delete("account", "account_no = ?", new String[]{accountNo});
+        int returnValue = database.delete("account", "account_no = ?", new String[]{accountNo});
+
+        // return value gives no of records deleted
+        if (returnValue == 0) {
+            String msg = "Account " + accountNo + " is invalid.";
+            throw new InvalidAccountException(msg);
+        }
 
     }
 
@@ -205,17 +312,18 @@ public class SQLiteDB extends SQLiteOpenHelper {
      * @param accountNo
      * @return balance
      */
-    public double getBalance(String accountNo) {
+    public double getBalance(String accountNo) throws InvalidAccountException{
 
         SQLiteDatabase database = this.getReadableDatabase();
-        Cursor cursor = database.query("account", new String[] {"balance"},
-                "account_no = ?", new String[] {accountNo}, null, null, null);
+        String getBalanceQuery = "SELECT balance FROM account WHERE account_no = ?;";
+        Cursor cursor = database.rawQuery(getBalanceQuery, new String[] {accountNo});
 
         if (cursor.moveToFirst()) {
             return cursor.getDouble(0);
         }
 
-        return -1;
+        String msg = "Account " + accountNo + " is invalid.";
+        throw new InvalidAccountException(msg);
     }
 
     /**
